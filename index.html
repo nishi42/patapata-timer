@@ -5,27 +5,58 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Patapata Pomodoro</title>
     <style>
-        /* --- 基本設定 --- */
+        /* --- 基本設定＆配色 --- */
+        :root {
+            --bg-color: #001f3f;   /* 深い紺色 */
+            --card-bg: #003366;    /* カードの背景（少し明るい紺） */
+            --text-color: #FFDC00; /* 鮮やかな黄色 */
+            --shadow-color: rgba(0,0,0,0.5);
+        }
+
         body {
-            background-color: #222;
-            color: #eee;
-            font-family: 'Courier New', Courier, monospace;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            font-family: 'Courier New', Courier, monospace; /* レトロな等幅フォント */
             display: flex;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-            height: 100vh;
+            min-height: 100vh; /* heightだとスマホでアドレスバー分ずれることがあるのでmin-heightに変更 */
             margin: 0;
+            overflow: hidden; /* スクロールバーが出ないように */
         }
 
-        h1 { margin-bottom: 30px; font-size: 1.5rem; color: #888; }
+        h1 {
+            margin-bottom: 30px;
+            font-size: 1.5rem;
+            color: var(--text-color);
+            opacity: 0.8;
+            letter-spacing: 2px;
+        }
 
         /* --- パタパタ時計のコンテナ --- */
+        .timer-wrapper {
+            /* スマホ対応のためにラッパーを追加 */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
         .timer-container {
             display: flex;
             gap: 15px;
-            perspective: 400px; /* 3D効果の奥行き */
+            perspective: 400px;
         }
+
+        /* --- スマホ対応（レスポンシブ） --- */
+        @media (max-width: 600px) {
+            .timer-container {
+                /* 画面が狭いときは全体を0.6倍に縮小 */
+                transform: scale(0.6);
+            }
+            h1 { font-size: 1.2rem; margin-bottom: 10px; }
+        }
+
 
         /* --- 各数字のカードデザイン --- */
         .flip-card {
@@ -33,11 +64,12 @@
             width: 80px;
             height: 120px;
             font-size: 80px;
+            font-weight: bold;
             line-height: 120px;
             text-align: center;
-            background: #333;
-            border-radius: 6px;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            background: var(--card-bg);
+            border-radius: 8px;
+            box-shadow: 0 6px 15px var(--shadow-color);
         }
 
         /* 板の共通設定 */
@@ -47,41 +79,61 @@
             width: 100%;
             height: 50%;
             overflow: hidden;
-            background: #333;
-            color: #f0f0f0;
+            background: var(--card-bg);
+            color: var(--text-color);
+            box-sizing: border-box; /* ボーダーを含めたサイズ計算 */
         }
 
         /* 上半分 */
         .top, .top-flip {
             top: 0;
-            border-radius: 6px 6px 0 0;
-            border-bottom: 1px solid #222; /* 真ん中の切れ目 */
+            border-radius: 8px 8px 0 0;
+            border-bottom: 2px solid #001a33; /* 真ん中の切れ目を濃い紺で */
         }
 
         /* 下半分 */
         .bottom, .bottom-flip {
             bottom: 0;
-            border-radius: 0 0 6px 6px;
+            border-radius: 0 0 8px 8px;
             display: flex;
             align-items: flex-end;
             justify-content: center;
+            /* 上半分と色味を合わせるための調整 */
+            border-top: 1px solid transparent; 
         }
+        /* 下半分の文字位置調整 */
+        .bottom::after, .bottom-flip::after {
+            content: attr(data-value);
+            position: absolute;
+            top: -100%;
+            left: 0;
+            width: 100%;
+            height: 200%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        /* bottomの中身は空にして、擬似要素で表示させる（位置合わせのため） */
+        .bottom, .bottom-flip { font-size: 0; }
 
-        /* アニメーション用の板（普段は隠れている） */
+
+        /* アニメーション用の板設定 */
         .top-flip {
-            transform-origin: bottom; /* 下端を軸に回転 */
+            transform-origin: bottom;
+            z-index: 2; /* 最前面へ */
         }
         .bottom-flip {
-            transform-origin: top; /* 上端を軸に回転 */
-            transform: rotateX(90deg); /* 最初は倒しておく */
+            transform-origin: top;
+            transform: rotateX(90deg);
+            z-index: 1;
         }
 
-        /* --- アニメーション --- */
+        /* --- アニメーション定義 --- */
         .flip-down .top-flip {
-            animation: flipTop 0.6s ease-in forwards;
+            animation: flipTop 0.3s ease-in forwards;
         }
         .flip-down .bottom-flip {
-            animation: flipBottom 0.6s ease-out 0.3s forwards; /* Topの半分の時間で開始 */
+            animation: flipBottom 0.3s ease-out 0.3s forwards;
         }
 
         @keyframes flipTop {
@@ -91,21 +143,39 @@
             100% { transform: rotateX(0deg); }
         }
 
+        /* --- 区切り文字 --- */
+        .separator {
+            font-size: 80px;
+            line-height: 110px;
+            color: var(--text-color);
+            opacity: 0.6;
+        }
+
         /* --- ボタン --- */
         .controls {
             margin-top: 40px;
+            z-index: 10; /* 前面に配置 */
         }
         button {
-            padding: 10px 20px;
+            padding: 12px 30px;
             font-size: 1.2rem;
+            font-family: inherit;
+            font-weight: bold;
             cursor: pointer;
-            background: #444;
-            color: white;
+            background: var(--text-color); /* 黄色背景 */
+            color: var(--bg-color);        /* 紺色文字 */
             border: none;
-            border-radius: 4px;
-            transition: background 0.2s;
+            border-radius: 50px;
+            box-shadow: 0 4px 10px var(--shadow-color);
+            transition: transform 0.1s, background 0.2s;
         }
-        button:hover { background: #555; }
+        button:hover {
+            background: #ffed4a; /* ホバー時に少し明るく */
+            transform: translateY(-2px);
+        }
+        button:active {
+            transform: translateY(1px);
+        }
 
     </style>
 </head>
@@ -113,25 +183,27 @@
 
     <h1>POMODORO TIMER</h1>
 
-    <div class="timer-container">
-        <div class="flip-card" id="min-tens">
-            <div class="top">2</div>
-            <div class="bottom">2</div>
-        </div>
-        <div class="flip-card" id="min-ones">
-            <div class="top">5</div>
-            <div class="bottom">5</div>
-        </div>
-        
-        <div style="font-size: 80px; line-height: 110px;">:</div>
+    <div class="timer-wrapper">
+        <div class="timer-container">
+            <div class="flip-card" id="min-tens">
+                <div class="top">2</div>
+                <div class="bottom" data-value="2"></div>
+            </div>
+            <div class="flip-card" id="min-ones">
+                <div class="top">5</div>
+                <div class="bottom" data-value="5"></div>
+            </div>
+            
+            <div class="separator">:</div>
 
-        <div class="flip-card" id="sec-tens">
-            <div class="top">0</div>
-            <div class="bottom">0</div>
-        </div>
-        <div class="flip-card" id="sec-ones">
-            <div class="top">0</div>
-            <div class="bottom">0</div>
+            <div class="flip-card" id="sec-tens">
+                <div class="top">0</div>
+                <div class="bottom" data-value="0"></div>
+            </div>
+            <div class="flip-card" id="sec-ones">
+                <div class="top">0</div>
+                <div class="bottom" data-value="0"></div>
+            </div>
         </div>
     </div>
 
@@ -143,6 +215,18 @@
         let interval;
         let timeLeft = 25 * 60; // 25分
 
+        // --- 効果音の準備 (Base64エンコードされた短いクリック音) ---
+        const clickSoundBase64 = "data:audio/wav;base64,UklGRl9vAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YRVvAABBgY+DkoaFh4iJiIqLjI2Oj5CRkpOUlZaXmJmam5yen6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/wABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj9AQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVpbXF1eX2BhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ent8fX5/gIGCg4SFhoeIiYqLjI2Oj5CRkpOUlZaXmJmam5yen6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/wABAgMEBQYHCAkKCwwNDg8QERITFBUWFxgZGhscHR4fICEiIyQlJicoKSorLC0uLzAxMjM0NTY3ODk6Ozw9Pj9AQUJDREVGR0hJSktMTU5PUFFSU1RVVldYWVpbXF1eX2BhYmNkZWZnaGlqa2xtbm9wcXJzdHV2d3h5ent8fX5/gIGCg4SFhoeIiYqLjI2Oj5CRkpOUlZaXmJmam5yen6ChoqOkpaanqKmqq6ytrq+wsbKztLW2t7i5uru8vb6/wMHCw8TFxsfIycrLzM3Oz9DR0tPU1dbX2Nna29zd3t/g4eLj5OXm5+jp6uvs7e7v8PHy8/T19vf4+fr7/P3+/w==";
+        const clickAudio = new Audio(clickSoundBase64);
+        clickAudio.volume = 0.3; // 音量調整（0.0〜1.0）
+
+        // 効果音を再生する関数
+        function playClickSound() {
+            clickAudio.currentTime = 0; // 連続再生のために再生位置をリセット
+            clickAudio.play().catch(e => console.log("Audio play failed:", e)); // エラーハンドリング
+        }
+
+
         // カードをパタッとさせる関数
         function flipCard(elementId, newValue) {
             const el = document.getElementById(elementId);
@@ -150,30 +234,31 @@
             const bottom = el.querySelector('.bottom');
             const currentValue = top.innerText;
 
-            if (newValue === currentValue) return; // 値が変わらなければ何もしない
+            if (newValue === currentValue) return;
 
-            // アニメーション用の要素を動的に生成
+            // 値が変わるタイミングで音を鳴らす
+            playClickSound();
+
             const topFlip = document.createElement('div');
             topFlip.className = 'top-flip';
             topFlip.innerText = currentValue;
 
             const bottomFlip = document.createElement('div');
             bottomFlip.className = 'bottom-flip';
-            bottomFlip.innerText = newValue;
+            // bottom側はdata-value属性で値を設定（CSSで表示）
+            bottomFlip.setAttribute('data-value', newValue); 
 
-            // DOMに追加してアニメーション開始
             el.appendChild(topFlip);
             el.appendChild(bottomFlip);
             el.classList.add('flip-down');
 
-            // アニメーション完了後の処理
             setTimeout(() => {
                 top.innerText = newValue;
-                bottom.innerText = newValue;
+                bottom.setAttribute('data-value', newValue);
                 topFlip.remove();
                 bottomFlip.remove();
                 el.classList.remove('flip-down');
-            }, 600); // CSSのアニメーション時間と合わせる
+            }, 600); // CSSのアニメーション合計時間(0.3s + 0.3s)に合わせる
         }
 
         function updateDisplay(time) {
@@ -190,6 +275,9 @@
         }
 
         function startTimer() {
+            // 最初のタップで音声再生の許可を得るためのダミー再生（スマホ対策）
+            if (!interval) playClickSound();
+
             if (interval) {
                 clearInterval(interval);
                 interval = null;
@@ -204,10 +292,18 @@
                     updateDisplay(timeLeft);
                 } else {
                     clearInterval(interval);
+                    // タイマー終了時のアラーム音などをここに追加しても良いですね
                     alert("Time's up!");
                 }
             }, 1000);
         }
+
+        // 初期表示設定
+        document.getElementById('min-tens').querySelector('.bottom').setAttribute('data-value', '2');
+        document.getElementById('min-ones').querySelector('.bottom').setAttribute('data-value', '5');
+        document.getElementById('sec-tens').querySelector('.bottom').setAttribute('data-value', '0');
+        document.getElementById('sec-ones').querySelector('.bottom').setAttribute('data-value', '0');
+
     </script>
 </body>
 </html>
