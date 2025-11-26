@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Patapata Pomodoro</title>
+    <style>
+        /* --- 基本設定 --- */
+        body {
+            background-color: #222;
+            color: #eee;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        h1 { margin-bottom: 30px; font-size: 1.5rem; color: #888; }
+
+        /* --- パタパタ時計のコンテナ --- */
+        .timer-container {
+            display: flex;
+            gap: 15px;
+            perspective: 400px; /* 3D効果の奥行き */
+        }
+
+        /* --- 各数字のカードデザイン --- */
+        .flip-card {
+            position: relative;
+            width: 80px;
+            height: 120px;
+            font-size: 80px;
+            line-height: 120px;
+            text-align: center;
+            background: #333;
+            border-radius: 6px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
+
+        /* 板の共通設定 */
+        .top, .bottom, .top-flip, .bottom-flip {
+            position: absolute;
+            left: 0;
+            width: 100%;
+            height: 50%;
+            overflow: hidden;
+            background: #333;
+            color: #f0f0f0;
+        }
+
+        /* 上半分 */
+        .top, .top-flip {
+            top: 0;
+            border-radius: 6px 6px 0 0;
+            border-bottom: 1px solid #222; /* 真ん中の切れ目 */
+        }
+
+        /* 下半分 */
+        .bottom, .bottom-flip {
+            bottom: 0;
+            border-radius: 0 0 6px 6px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+        }
+
+        /* アニメーション用の板（普段は隠れている） */
+        .top-flip {
+            transform-origin: bottom; /* 下端を軸に回転 */
+        }
+        .bottom-flip {
+            transform-origin: top; /* 上端を軸に回転 */
+            transform: rotateX(90deg); /* 最初は倒しておく */
+        }
+
+        /* --- アニメーション --- */
+        .flip-down .top-flip {
+            animation: flipTop 0.6s ease-in forwards;
+        }
+        .flip-down .bottom-flip {
+            animation: flipBottom 0.6s ease-out 0.3s forwards; /* Topの半分の時間で開始 */
+        }
+
+        @keyframes flipTop {
+            100% { transform: rotateX(-90deg); }
+        }
+        @keyframes flipBottom {
+            100% { transform: rotateX(0deg); }
+        }
+
+        /* --- ボタン --- */
+        .controls {
+            margin-top: 40px;
+        }
+        button {
+            padding: 10px 20px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            background: #444;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        button:hover { background: #555; }
+
+    </style>
+</head>
+<body>
+
+    <h1>POMODORO TIMER</h1>
+
+    <div class="timer-container">
+        <div class="flip-card" id="min-tens">
+            <div class="top">2</div>
+            <div class="bottom">2</div>
+        </div>
+        <div class="flip-card" id="min-ones">
+            <div class="top">5</div>
+            <div class="bottom">5</div>
+        </div>
+        
+        <div style="font-size: 80px; line-height: 110px;">:</div>
+
+        <div class="flip-card" id="sec-tens">
+            <div class="top">0</div>
+            <div class="bottom">0</div>
+        </div>
+        <div class="flip-card" id="sec-ones">
+            <div class="top">0</div>
+            <div class="bottom">0</div>
+        </div>
+    </div>
+
+    <div class="controls">
+        <button onclick="startTimer()">Start / Reset</button>
+    </div>
+
+    <script>
+        let interval;
+        let timeLeft = 25 * 60; // 25分
+
+        // カードをパタッとさせる関数
+        function flipCard(elementId, newValue) {
+            const el = document.getElementById(elementId);
+            const top = el.querySelector('.top');
+            const bottom = el.querySelector('.bottom');
+            const currentValue = top.innerText;
+
+            if (newValue === currentValue) return; // 値が変わらなければ何もしない
+
+            // アニメーション用の要素を動的に生成
+            const topFlip = document.createElement('div');
+            topFlip.className = 'top-flip';
+            topFlip.innerText = currentValue;
+
+            const bottomFlip = document.createElement('div');
+            bottomFlip.className = 'bottom-flip';
+            bottomFlip.innerText = newValue;
+
+            // DOMに追加してアニメーション開始
+            el.appendChild(topFlip);
+            el.appendChild(bottomFlip);
+            el.classList.add('flip-down');
+
+            // アニメーション完了後の処理
+            setTimeout(() => {
+                top.innerText = newValue;
+                bottom.innerText = newValue;
+                topFlip.remove();
+                bottomFlip.remove();
+                el.classList.remove('flip-down');
+            }, 600); // CSSのアニメーション時間と合わせる
+        }
+
+        function updateDisplay(time) {
+            const m = Math.floor(time / 60);
+            const s = time % 60;
+
+            const mStr = String(m).padStart(2, '0');
+            const sStr = String(s).padStart(2, '0');
+
+            flipCard('min-tens', mStr[0]);
+            flipCard('min-ones', mStr[1]);
+            flipCard('sec-tens', sStr[0]);
+            flipCard('sec-ones', sStr[1]);
+        }
+
+        function startTimer() {
+            if (interval) {
+                clearInterval(interval);
+                interval = null;
+                timeLeft = 25 * 60;
+                updateDisplay(timeLeft);
+                return;
+            }
+
+            interval = setInterval(() => {
+                if (timeLeft > 0) {
+                    timeLeft--;
+                    updateDisplay(timeLeft);
+                } else {
+                    clearInterval(interval);
+                    alert("Time's up!");
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
